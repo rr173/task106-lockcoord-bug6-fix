@@ -49,9 +49,7 @@ func (m *Manager) Decide(path, holder string, leaseSec int, now time.Time) (*Dec
 			decision.Reasons = append(decision.Reasons, reason)
 		}
 	}
-	m.mu.RLock()
-	policy, ok := m.policies[path]
-	m.mu.RUnlock()
+	policy, ok := m.effectivePolicy(path)
 	if ok {
 		decision.Policy = &policy
 		if policy.MaxLeaseSec > 0 && leaseSec > policy.MaxLeaseSec {

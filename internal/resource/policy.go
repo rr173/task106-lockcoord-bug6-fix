@@ -32,6 +32,30 @@ func (m *Manager) SetPolicy(path string, policy model.ResourcePolicy) (*model.Re
 	return &policy, nil
 }
 
+// effectivePolicy resolves the policy that governs path: a policy set
+// directly on path overrides any ancestor, otherwise the nearest ancestor
+// with its own policy is inherited. A child that does not override is
+// therefore constrained by its parent's policy.
+func (m *Manager) effectivePolicy(path string) (model.ResourcePolicy, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if policy, ok := m.policies[path]; ok {
+		return policy, true
+	}
+	current := path
+	for {
+		parent, ok := namespace.Parent(current)
+		if !ok || parent == "" {
+			break
+		}
+		if policy, ok := m.policies[parent]; ok {
+			return policy, true
+		}
+		current = parent
+	}
+	return model.ResourcePolicy{}, false
+}
+
 func (m *Manager) GetPolicy(path string) (*model.ResourcePolicy, error) {
 	path, err := namespace.Normalize(path)
 	if err != nil {
